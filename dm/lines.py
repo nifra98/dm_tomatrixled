@@ -2,7 +2,7 @@
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from functools import lru_cache
-from re import Pattern, match as re_match
+from re import Pattern
 from typing import List, Optional, Callable, Tuple, Dict, Match
 
 from PIL import Image

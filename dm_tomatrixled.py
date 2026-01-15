@@ -4,7 +4,7 @@ from __future__ import annotations
 from argparse import ArgumentParser
 import atexit
 from concurrent.futures import Executor, ProcessPoolExecutor
-from dataclasses import dataclass, fields
+from dataclasses import fields
 from datetime import datetime, timedelta
 from decimal import Decimal, ROUND_HALF_UP
 from requests import get, post
@@ -13,7 +13,6 @@ from json import dumps
 from json import load as json_load
 from subprocess import check_output
 from sys import stderr, stdout
-from tempfile import NamedTemporaryFile
 from time import localtime, sleep  # , monotonic
 from typing import List, Iterable, Tuple, Optional, NoReturn, Union, Callable, Sequence
 
@@ -23,7 +22,6 @@ from PIL import Image
 from rgbmatrix import RGBMatrix, RGBMatrixOptions, graphics
 from rgbmatrix.core import FrameCanvas
 
-import dm
 from dm.actions import check_action
 from dm.drawstuff import clockstr_tt, colorppm
 from dm.areas import rightbar_wide, rightbar_tmp, rightbar_verticalclock, startscreen
