@@ -9,16 +9,20 @@ from gti_test import init_session, find_station, USERNAME, PASSWORD, HALTESTELLE
 
 GTI_DEPARTURE_URL = "https://gti.geofox.de/gti/public/departureList"
 
+
 def generate_signature(body_bytes: bytes, password: str) -> str:
     sig = hmac.new(password.encode("utf-8"), body_bytes, hashlib.sha1).digest()
     return base64.b64encode(sig).decode()
 
 
-def get_departures(session_id: str, station: dict, max_departures: int = 20):
-    """Ruft die nächsten Abfahrten für eine Haltestelle ab (mit vollständigem Station-Objekt)"""
+def get_departures(session_id: str, station: dict, max_departures: int = 10):
+    """
+    Liefert Abfahrten als Countdown (GTI-konform)
+    """
     now = datetime.now()
+
     body = {
-        "version": 63,  # feste Version laut Beispiel
+        "version": 63,
         "station": station,
         "time": {
             "date": now.strftime("%d.%m.%Y"),
@@ -41,37 +45,57 @@ def get_departures(session_id: str, station: dict, max_departures: int = 20):
         "geofox-session-id": session_id
     }
 
-    response = requests.post(GTI_DEPARTURE_URL, headers=headers, data=body_bytes)
-    response.raise_for_status()
-    data = response.json()
+    resp = requests.post(GTI_DEPARTURE_URL, headers=headers, data=body_bytes)
+    resp.raise_for_status()
+    data = resp.json()
 
-    departures = data.get("departures", [])
-    if not departures:
-        print("Keine Abfahrten gefunden!")
-        return []
+    base_time = data.get("time", {})
+    departures_raw = data.get("departures", [])
 
-    print(f"\nNächste {len(departures)} Abfahrten für {station.get('name')} ({station.get('id')}):")
-    for d in departures:
-        line = d.get("line") or d.get("vehicleType")
-        dest = d.get("direction") or d.get("destination")
-        planned_time = d.get("plannedDepartureTime") or d.get("time")
-        real_time = d.get("realDepartureTime") or ""
-        print(f"{planned_time} (real: {real_time}) → {line} Richtung {dest}")
+    departures = []
+
+    for d in departures_raw:
+        line = d["line"]["name"]
+        direction = d["line"]["direction"]
+        vehicle = d["line"]["type"]["simpleType"]
+        minutes = d.get("timeOffset")
+
+        departures.append({
+            "line": line,
+            "direction": direction,
+            "minutes": minutes,
+            "vehicle": vehicle
+        })
 
     return departures
 
 
+def print_countdown(departures, station_name):
+    print(f"\nNächste Abfahrten ab {station_name}:\n")
+
+    for d in departures:
+        if d["minutes"] <= 0:
+            countdown = "sofort"
+        else:
+            countdown = f"{d['minutes']} min"
+
+        print(
+            f"{d['line']:>4} → {d['direction']:<30} {countdown:>6} [{d['vehicle']}]"
+        )
+
+
 if __name__ == "__main__":
-    # 1️⃣ Session starten
+    # 1️⃣ Session
     session_id = init_session()
 
-    # 2️⃣ Haltestelle suchen
+    # 2️⃣ Station
     stations = find_station(session_id, HALTESTELLE)
     if not stations:
-        exit("Keine Haltestellen gefunden!")
+        exit("Keine Haltestelle gefunden")
 
     station = stations[0]
-    print("\nVerwende Station:", station["name"], "ID:", station["id"])
+    print("Verwende Station:", station["name"], station["id"])
 
-    # 3️⃣ Einmalig Abfahrten abrufen
-    get_departures(session_id, station)
+    # 3️⃣ Abfahrten (einmalig)
+    departures = get_departures(session_id, station)
+    print_countdown(departures, station["name"])
